@@ -1,0 +1,6 @@
+{
+  "name": "Sabrina Lima Nails Designer",
+  "description": "Aplicativo exclusivo de Sabrina Lima Nails Designer (@sbrnxv_nails) para catálogo de unhas Molde F1, agendamento de horários para clientes e painel de controle completo para a profissional com integração Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
