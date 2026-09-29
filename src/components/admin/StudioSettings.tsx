@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StudioProfile, SupabaseConfig } from '../../types';
-import { testSupabaseConnection, getSupabaseSqlSchema } from '../../lib/supabase';
+import { testSupabaseConnection, getSupabaseSqlSchema, db, clearSupabaseConfig } from '../../lib/supabase';
 import { saveVideoBlob } from '../../lib/videoStorage';
 import {
   Save,
@@ -20,6 +20,13 @@ import {
   Play,
   Film,
   Image as ImageIcon,
+  Download,
+  FileCode,
+  HardDrive,
+  ShieldCheck,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface StudioSettingsProps {
@@ -62,22 +69,49 @@ export const StudioSettings: React.FC<StudioSettingsProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsVideoUploading(true);
+    setVideoUploadMsg('Enviando arquivo...');
     try {
+      // Se o Supabase estiver conectado, envia para o bucket 'media' do Supabase Storage
+      if (supabaseConfig.isConnected) {
+        const res = await db.uploadFileToStorage(file, 'media', 'videos');
+        if (res.url) {
+          setFeaturedVideoUrl(res.url);
+          setVideoUploadMsg('Vídeo salvo com sucesso no Supabase Storage!');
+          setTimeout(() => setVideoUploadMsg(''), 4000);
+          return;
+        }
+      }
+
+      // Fallback para armazenamento em blob IndexedDB local
       const blobUrl = await saveVideoBlob('hero_featured_video', file);
       setFeaturedVideoUrl(blobUrl);
-      setVideoUploadMsg('Vídeo carregado com sucesso!');
-      setTimeout(() => setVideoUploadMsg(''), 3000);
-    } catch (err) {
+      setVideoUploadMsg('Vídeo salvo com sucesso no navegador!');
+      setTimeout(() => setVideoUploadMsg(''), 4000);
+    } catch (err: any) {
       console.error(err);
-      alert('Erro ao processar o arquivo de vídeo.');
+      setVideoUploadMsg('Erro ao processar arquivo: ' + (err?.message || 'Tente novamente'));
+      setTimeout(() => setVideoUploadMsg(''), 5000);
     } finally {
       setIsVideoUploading(false);
     }
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (supabaseConfig.isConnected) {
+      try {
+        const res = await db.uploadFileToStorage(file, 'media', 'branding');
+        if (res.url) {
+          setLogoUrl(res.url);
+          return;
+        }
+      } catch (err) {
+        console.warn('Erro ao subir logo no Supabase, usando local', err);
+      }
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       if (typeof event.target?.result === 'string') {
@@ -88,12 +122,29 @@ export const StudioSettings: React.FC<StudioSettingsProps> = ({
   };
 
   // Supabase Config Form State
-  const [sbUrl, setSbUrl] = useState(supabaseConfig.url);
-  const [sbKey, setSbKey] = useState(supabaseConfig.anonKey);
+  const [sbUrl, setSbUrl] = useState(supabaseConfig.url || '');
+  const [sbKey, setSbKey] = useState(supabaseConfig.anonKey || '');
   const [isTestingSb, setIsTestingSb] = useState(false);
   const [sbTestResult, setSbTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
+  const [showSqlViewer, setShowSqlViewer] = useState(false);
+
+  useEffect(() => {
+    setSbUrl(supabaseConfig.url || '');
+    setSbKey(supabaseConfig.anonKey || '');
+  }, [supabaseConfig.url, supabaseConfig.anonKey]);
+
+  const handleClearSupabase = async () => {
+    setSbUrl('');
+    setSbKey('');
+    setSbTestResult({
+      success: true,
+      message: 'Chaves, API Key e URL do Supabase foram removidas com sucesso! Tudo limpo para você refazer do zero.',
+    });
+    const cleared = clearSupabaseConfig();
+    await onSaveSupabaseConfig(cleared);
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,6 +182,22 @@ export const StudioSettings: React.FC<StudioSettingsProps> = ({
           isConnected: true,
           autoSync: true,
         });
+
+        // Sincronizar automaticamente todo o conteúdo existente para o novo Supabase
+        try {
+          setIsSyncing(true);
+          const syncRes = await onSyncAllToSupabase();
+          if (syncRes.success) {
+            setSbTestResult({
+              success: true,
+              message: 'Conectado com sucesso! Dados sincronizados e sistema 100% pronto para salvar novas criações no Supabase.',
+            });
+          }
+        } catch {
+          // Mantém o resultado de sucesso da conexão
+        } finally {
+          setIsSyncing(false);
+        }
       }
     } catch (e: any) {
       setSbTestResult({ success: false, message: e?.message || 'Falha ao conectar.' });
@@ -156,6 +223,19 @@ export const StudioSettings: React.FC<StudioSettingsProps> = ({
     navigator.clipboard.writeText(sql);
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 3000);
+  };
+
+  const handleDownloadSql = () => {
+    const sql = getSupabaseSqlSchema();
+    const blob = new Blob([sql], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'supabase_sabrina_nails.sql';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -540,33 +620,138 @@ export const StudioSettings: React.FC<StudioSettingsProps> = ({
               <Database className="w-3.5 h-3.5" />
               <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar Tudo no Supabase'}</span>
             </button>
+
+            {(sbUrl || sbKey || supabaseConfig.isConnected) && (
+              <button
+                type="button"
+                onClick={handleClearSupabase}
+                className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all"
+                title="Remover URL e API Key do Supabase para refazer do zero"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Remover Chaves & URL (Limpar Tudo)</span>
+              </button>
+            )}
           </div>
         </div>
 
         {/* SQL Script Accordion / Helper */}
-        <div className="pt-6 border-t border-stone-200">
-          <div className="flex items-center justify-between mb-3">
+        <div className="pt-6 border-t border-stone-200 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[11px] font-mono font-bold mb-1">
+                <FileCode className="w-3.5 h-3.5 text-rose-600" />
+                SQL & Tabelas Supabase
+              </div>
               <h4 className="font-bold text-sm text-stone-900 flex items-center gap-1.5">
-                <span>Script SQL Automático para o Supabase</span>
+                <span>Gerador de Script SQL (Pronto para Refazer)</span>
               </h4>
               <p className="text-[11px] text-stone-500">
-                Copie este script e cole no <strong>SQL Editor</strong> do painel Supabase para criar as tabelas e políticas de segurança em 1 segundo.
+                Os arquivos SQL anteriores foram removidos do servidor conforme solicitado. Quando estiver pronta para refazer, visualize e copie o script limpo abaixo.
               </p>
             </div>
 
-            <button
-              onClick={handleCopySql}
-              className="px-3.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 text-xs font-bold border border-rose-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-rose-600" />}
-              <span>{copiedSql ? 'Copiado!' : 'Copiar Script SQL'}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSqlViewer(!showSqlViewer)}
+                className="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                {showSqlViewer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                <span>{showSqlViewer ? 'Ocultar Script SQL' : 'Visualizar Novo Script SQL'}</span>
+              </button>
+
+              {showSqlViewer && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCopySql}
+                    className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-900 text-xs font-bold border border-rose-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-rose-600" />}
+                    <span>{copiedSql ? 'Copiado!' : 'Copiar Script SQL'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadSql}
+                    className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-stone-600" />
+                    <span>Baixar Arquivo .sql</span>
+                  </button>
+                </>
+              )}
+
+              <a
+                href="https://supabase.com/dashboard"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Abrir Supabase</span>
+              </a>
+            </div>
           </div>
 
-          <div className="bg-stone-950 rounded-2xl p-4 font-mono text-[11px] text-stone-300 max-h-56 overflow-y-auto border border-stone-800">
-            <pre className="whitespace-pre-wrap">{getSupabaseSqlSchema()}</pre>
-          </div>
+          {showSqlViewer && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Quick Guide */}
+              <div className="bg-rose-50/60 border border-rose-200/80 rounded-2xl p-4 text-xs space-y-2">
+                <h5 className="font-bold text-stone-900 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                  Como executar no Supabase quando for refazer:
+                </h5>
+                <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-stone-600 pt-1">
+                  <li className="p-2.5 rounded-xl bg-white/90 border border-rose-100 shadow-2xs">
+                    <span className="font-bold text-rose-600 block mb-0.5">1. Acesse</span>
+                    Entre no seu projeto no <span className="font-semibold text-stone-900">supabase.com</span>
+                  </li>
+                  <li className="p-2.5 rounded-xl bg-white/90 border border-rose-100 shadow-2xs">
+                    <span className="font-bold text-rose-600 block mb-0.5">2. SQL Editor</span>
+                    Clique no menu lateral no ícone <strong>SQL Editor</strong>
+                  </li>
+                  <li className="p-2.5 rounded-xl bg-white/90 border border-rose-100 shadow-2xs">
+                    <span className="font-bold text-rose-600 block mb-0.5">3. Nova Consulta</span>
+                    Clique em <strong>+ New query</strong> e cole o SQL abaixo
+                  </li>
+                  <li className="p-2.5 rounded-xl bg-white/90 border border-rose-100 shadow-2xs">
+                    <span className="font-bold text-emerald-600 block mb-0.5">4. Executar</span>
+                    Clique no botão verde <strong>Run</strong> (Ctrl+Enter)
+                  </li>
+                </ol>
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 text-[11px] text-stone-600">
+                  <span className="font-bold text-stone-700">Tabelas:</span>
+                  <span className="bg-white px-2 py-0.5 rounded-md border border-stone-200 font-mono text-[10px]">studio_profile</span>
+                  <span className="bg-white px-2 py-0.5 rounded-md border border-stone-200 font-mono text-[10px]">specialties</span>
+                  <span className="bg-white px-2 py-0.5 rounded-md border border-stone-200 font-mono text-[10px]">catalog_items</span>
+                  <span className="bg-white px-2 py-0.5 rounded-md border border-stone-200 font-mono text-[10px]">schedules</span>
+                  <span className="bg-white px-2 py-0.5 rounded-md border border-stone-200 font-mono text-[10px]">blocked_slots</span>
+                  <span className="bg-white px-2 py-0.5 rounded-md border border-stone-200 font-mono text-[10px]">appointments</span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                  <span className="font-bold text-stone-700 flex items-center gap-1">
+                    <HardDrive className="w-3.5 h-3.5 text-rose-600" /> Buckets de Armazenamento:
+                  </span>
+                  <span className="bg-rose-100 text-rose-900 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold">storage.media</span>
+                  <span className="bg-rose-100 text-rose-900 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold">storage.nails</span>
+                  <span className="bg-rose-100 text-rose-900 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold">storage.catalog</span>
+                  <span className="text-emerald-700 font-bold flex items-center gap-1 ml-auto">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Políticas de Armazenamento Sem Erro 42501
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative group">
+                <div className="bg-stone-950 rounded-2xl p-4 font-mono text-[11px] text-stone-300 max-h-72 overflow-y-auto border border-stone-800 shadow-inner">
+                  <pre className="whitespace-pre-wrap">{getSupabaseSqlSchema()}</pre>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

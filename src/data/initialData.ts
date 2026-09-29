@@ -201,8 +201,8 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
 ];
 
 export const INITIAL_SUPABASE_CONFIG: SupabaseConfig = {
-  url: '',
-  anonKey: '',
-  isConnected: false,
+  url: 'https://euehzryesotgjixejudb.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1ZWh6cnllc290Z2ppeGVqdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDAwNzgsImV4cCI6MjEwNjI3NjA3OH0.b1LAI5x-muc8rAJILqwQXbVtu-77WXVRFr7iwbb5PwY',
+  isConnected: true,
   autoSync: true,
 };

@@ -52,7 +52,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           Acesso Proprietária
         </h3>
         <p className="text-xs text-stone-500 mb-6">
-          Área restrita de Sabrina Lima para gerenciar agenda, catálogo, valores e configurações do Supabase.
+          Área restrita de Sabrina Lima para gerenciar agenda, catálogo, valores e configurações do studio.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-left">

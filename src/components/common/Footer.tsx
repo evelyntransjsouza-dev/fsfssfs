@@ -1,14 +1,14 @@
 import React from 'react';
 import { StudioProfile } from '../../types';
-import { Instagram, Phone, Sparkles, MapPin, Heart, Shield, Database } from 'lucide-react';
+import { Instagram, Phone, Sparkles, MapPin, Heart } from 'lucide-react';
 
 interface FooterProps {
   profile: StudioProfile;
   onOpenAdminLogin: () => void;
-  isSupabaseConnected: boolean;
+  isSupabaseConnected?: boolean;
 }
 
-export const Footer: React.FC<FooterProps> = ({ profile, onOpenAdminLogin, isSupabaseConnected }) => {
+export const Footer: React.FC<FooterProps> = ({ profile, onOpenAdminLogin }) => {
   return (
     <footer className="bg-stone-900 text-stone-300 border-t border-stone-800 pt-14 pb-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -67,7 +67,7 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenAdminLogin, isSup
             </ul>
           </div>
 
-          {/* Location & Access */}
+          {/* Location & Schedule */}
           <div>
             <h4 className="text-sm font-semibold uppercase tracking-wider text-stone-200 mb-4 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-rose-400" />
@@ -76,27 +76,27 @@ export const Footer: React.FC<FooterProps> = ({ profile, onOpenAdminLogin, isSup
             <p className="text-sm text-stone-400 leading-relaxed mb-3">
               {profile.location || 'Atendimento com horário previamente agendado no studio.'}
             </p>
-            <div className="flex items-center gap-2 text-xs text-stone-500">
-              <Database className="w-3.5 h-3.5 text-rose-400" />
-              <span>Banco Supabase: {isSupabaseConnected ? 'Sincronizado' : 'Modo Ativo'}</span>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-stone-800">
-              <button
-                onClick={onOpenAdminLogin}
-                className="text-xs text-stone-500 hover:text-stone-300 flex items-center gap-1.5 transition-colors"
-              >
-                <Shield className="w-3 h-3 text-stone-600" />
-                Acesso Administrativo (Dono)
-              </button>
+            <div className="flex items-center gap-2 text-xs text-rose-300/80">
+              <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+              <span>Atendimento exclusivo com hora marcada</span>
             </div>
           </div>
         </div>
 
         <div className="pt-8 border-t border-stone-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-500 gap-3">
           <p>© {new Date().getFullYear()} {profile.name}. Todos os direitos reservados.</p>
-          <p className="flex items-center gap-1">
-            Feito com <Heart className="w-3 h-3 text-rose-500 fill-rose-500 inline" /> para clientes de Sabrina Lima ({profile.instagramHandle})
+          <p className="flex items-center gap-1 text-stone-400">
+            <span>Feito com</span>
+            <button
+              type="button"
+              onClick={onOpenAdminLogin}
+              title="Studio Sabrina Lima"
+              aria-label="Acesso exclusivo da Sabrina"
+              className="inline-flex items-center justify-center p-0.5 rounded-full hover:scale-135 active:scale-90 transition-transform duration-200 cursor-pointer focus:outline-hidden group"
+            >
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 transition-colors group-hover:text-rose-400 group-hover:fill-rose-400" />
+            </button>
+            <span>para clientes de Sabrina Lima ({profile.instagramHandle})</span>
           </p>
         </div>
       </div>

@@ -189,8 +189,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   : 'text-stone-300 hover:text-white hover:bg-stone-800'
               }`}
             >
-              <Settings className="w-4 h-4" />
-              <span>Nome do Studio, Logo & Supabase</span>
+              <Database className="w-4 h-4 text-emerald-400" />
+              <span>Studio & SQL Supabase</span>
             </button>
           </div>
         </div>

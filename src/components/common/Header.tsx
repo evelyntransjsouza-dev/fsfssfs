@@ -138,9 +138,9 @@ export const Header: React.FC<HeaderProps> = ({
               Agendar Molde F1
             </button>
 
-            {/* Owner Toggle Button */}
-            <div className="ml-3 pl-3 border-l border-stone-200">
-              {isOwnerLoggedIn ? (
+            {/* Owner Toggle Button - Somente visível quando logada */}
+            {isOwnerLoggedIn && (
+              <div className="ml-3 pl-3 border-l border-stone-200">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleNavClick('admin-view')}
@@ -160,17 +160,8 @@ export const Header: React.FC<HeaderProps> = ({
                     <LogOut className="w-4 h-4" />
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={onOpenAdminLogin}
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-500 hover:text-rose-800 hover:bg-rose-50/60 border border-stone-200 hover:border-rose-300 transition-all flex items-center gap-1.5"
-                  title="Acesso exclusivo para Sabrina (Dona do Studio)"
-                >
-                  <Lock className="w-3.5 h-3.5 text-stone-400" />
-                  <span>Área da Sabrina</span>
-                </button>
-              )}
-            </div>
+              </div>
+            )}
           </nav>
 
           {/* Mobile menu trigger */}
@@ -240,7 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
               Falar no WhatsApp
             </a>
 
-            {isOwnerLoggedIn ? (
+            {isOwnerLoggedIn && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleNavClick('admin-view')}
@@ -255,17 +246,6 @@ export const Header: React.FC<HeaderProps> = ({
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  onOpenAdminLogin();
-                  setMobileMenuOpen(false);
-                }}
-                className="inline-flex items-center gap-1 text-stone-500 hover:text-rose-800 font-medium"
-              >
-                <Lock className="w-3 h-3 text-stone-400" />
-                Acesso Sabrina (Dono)
-              </button>
             )}
           </div>
         </div>
